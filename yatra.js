@@ -32,7 +32,7 @@
     var dir = card.dataset.dir, counts = card.querySelector(".counts");
     Promise.all([getJSON(dir + "/photos.json").catch(function(){ return []; }),
                  getJSON(dir + "/videos.json").catch(function(){ return []; })]).then(function(r){
-      var photos = r[0], videos = r[1].filter(function(v){ return v && v.id; });
+      var photos = Array.isArray(r[0]) ? r[0] : (r[0].photos || []), videos = r[1].filter(function(v){ return v && v.id; });
       var cover = photos.filter(function(p){ return p.cover; })[0] || photos[0];
       if (cover) {                                    // photos live on media.vedicspace.in (full address) or beside the page
         var src = /^https?:\/\//.test(cover.thumb) ? cover.thumb : dir + "/" + cover.thumb;
@@ -48,17 +48,36 @@
 
   // ---------------------------------------------------------------- photos
   var grid = document.getElementById("photos");
-  if (grid) getJSON("photos.json").then(function(photos){
+  // photos.json is either a plain list, or {chapters: [{id, title, note, text}], photos: [{..., chapter}]}:
+  // with chapters, each chapter is a section with its heading, a short text and its own mosaic of photo cards
+  if (grid) getJSON("photos.json").then(function(data){
+    var chapters = Array.isArray(data) ? [] : (data.chapters || []);
+    var photos = Array.isArray(data) ? data : (data.photos || []);
     var count = document.getElementById("photo-count");
     if (!photos.length) { grid.outerHTML = '<p class="empty">Photos will appear here soon.</p>'; return; }
     if (count) count.textContent = photos.length + (photos.length === 1 ? " photo" : " photos");
-    grid.innerHTML = photos.map(function(p, i){
-      var wide = p.w && p.h && p.w / p.h > 1.9 ? " wide" : "";
-      return '<button class="pcard' + wide + '" type="button" data-i="' + i + '" aria-label="Open photo ' + (i + 1) +
-        (p.caption ? ": " + esc(p.caption) : "") + '"><img src="' + esc(p.thumb) + '" alt="' + esc(p.alt || p.caption || "") +
+    var groups = chapters.length ? chapters.map(function(c){
+      return {c: c, list: photos.filter(function(p){ return p.chapter === c.id; })};
+    }).filter(function(g){ return g.list.length; }) : [{c: null, list: photos}];
+    var ordered = [];                                    // the carousel runs through the photos in page order
+    function card(p){
+      var i = ordered.length; ordered.push(p);
+      var r = p.w && p.h ? p.w / p.h : 1.33, shape = r >= 1.7 ? " wide" : r < 0.8 ? " tall" : "";
+      return '<button class="pcard' + shape + '" type="button" data-i="' + i + '" aria-label="Open photo ' + (i + 1) +
+        (p.caption ? ": " + esc(p.caption) : "") + '"><img src="' + esc(p.thumb) + '" alt="' + esc(p.alt || p.caption || p._chapter || "") +
         '" loading="lazy" decoding="async"><span class="cap">' + esc(p.caption || "") + '</span></button>';
+    }
+    var nav = chapters.length > 1 ? '<nav class="chap-nav" aria-label="Chapters">' + groups.map(function(g, k){
+      return '<a href="#ch-' + esc(g.c.id) + '"><b>' + (k + 1) + '</b>' + esc(g.c.title) + '</a>'; }).join("") + '</nav>' : '';
+    grid.innerHTML = nav + groups.map(function(g, k){
+      g.list.forEach(function(p){ p._chapter = g.c ? g.c.title : ""; });
+      var head = g.c ? '<div class="chap-head"><span class="chap-n">' + (k + 1) + '</span><div><h3>' + esc(g.c.title) + '</h3>' +
+        (g.c.note ? '<p class="chap-note">' + esc(g.c.note) + ' · ' + g.list.length + ' photos</p>' : '') + '</div></div>' +
+        (g.c.text ? '<p class="chap-text">' + esc(g.c.text) + '</p>' : '') : '';
+      return '<section class="chap"' + (g.c ? ' id="ch-' + esc(g.c.id) + '"' : '') + '>' + head +
+        '<div class="mosaic">' + g.list.map(card).join("") + '</div></section>';
     }).join("");
-    setupCarousel(photos);
+    setupCarousel(ordered);
   }).catch(function(){ grid.outerHTML = '<p class="empty">The photos could not be loaded. Please refresh the page.</p>'; });
 
   function setupCarousel(photos){
@@ -76,7 +95,7 @@
       track.style.transform = "translateX(" + (-100 * idx) + "%)";
       load(idx); load(idx + 1); load(idx - 1);              // the photo shown and its neighbours
       cnt.textContent = (idx + 1) + " / " + N;
-      cap.textContent = photos[idx].caption || "";
+      cap.textContent = photos[idx].caption || photos[idx]._chapter || "";   // no caption: the chapter's name
       prev.disabled = idx === 0; next.disabled = idx === N - 1;
       [].forEach.call(dots.children, function(d, k){ d.classList.toggle("on", k === idx); });
     }
