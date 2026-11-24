@@ -51,7 +51,7 @@
 @media (hover:none){.pcard .cap{opacity:1}}
 
 /* ---- the carousel (opens over the page) */
-.lb{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;background:rgba(12,10,8,.96);color:#f5efe6;
+.lb{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;background:#0c0a08;color:#f5efe6;
   -webkit-user-select:none;user-select:none;touch-action:pan-y pinch-zoom}
 .lb.open{display:flex;animation:lbIn .25s ease}
 @keyframes lbIn{from{opacity:0}to{opacity:1}}
@@ -117,3 +117,18 @@ body.lb-lock{overflow:hidden}
 .chap-nav a b{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;background:var(--accent-soft);color:var(--accent)}
 .chap-nav a:hover{border-color:var(--accent);color:var(--accent)}
 .chap{scroll-margin-top:70px}
+
+/* ---- carousel: full screen and the immersive view */
+.lb-top{gap:8px}
+.lb-top .lb-count{margin-right:auto}
+.lb-fs .i-out{display:none}
+.lb.immersive .lb-fs .i-in{display:none}
+.lb.immersive .lb-fs .i-out{display:block}
+.lb:fullscreen{background:#000}
+.lb.immersive{background:#000}
+.lb.immersive .lb-cap,.lb.immersive .lb-dots{display:none}
+.lb.immersive .lb-top{position:absolute;top:0;left:0;right:0;z-index:3;background:linear-gradient(rgba(0,0,0,.55),transparent);opacity:.75}
+.lb.immersive .lb-slide{padding:0}
+.lb.immersive .lb-slide img{border-radius:0;box-shadow:none}
+/* the introduction's small headings */
+.intro-h{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:22px 0 6px}
