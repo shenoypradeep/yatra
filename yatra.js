@@ -34,7 +34,10 @@
                  getJSON(dir + "/videos.json").catch(function(){ return []; })]).then(function(r){
       var photos = r[0], videos = r[1].filter(function(v){ return v && v.id; });
       var cover = photos.filter(function(p){ return p.cover; })[0] || photos[0];
-      if (cover) { var c = card.querySelector(".cover"); c.style.backgroundImage = "url('" + dir + "/" + cover.thumb + "')"; c.innerHTML = ""; }
+      if (cover) {                                    // photos live on media.vedicspace.in (full address) or beside the page
+        var src = /^https?:\/\//.test(cover.thumb) ? cover.thumb : dir + "/" + cover.thumb;
+        var c = card.querySelector(".cover"); c.style.backgroundImage = "url('" + src + "')"; c.innerHTML = "";
+      }
       if (counts) counts.innerHTML =
         '<span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 8"/></svg>' +
         (photos.length ? photos.length + " photos" : "Photos soon") + '</span>' +
