@@ -106,7 +106,29 @@
       show(i, false);
       closeB.focus();
     }
+    // full screen: the browser's own full screen where it is allowed; where it is not (iPhone Safari),
+    // an immersive view in which the caption and controls step aside and the photo fills the window
+    var fsB = lb.querySelector(".lb-fs");
+    var canFS = !!(lb.requestFullscreen || lb.webkitRequestFullscreen);
+    function fsElement(){ return document.fullscreenElement || document.webkitFullscreenElement; }
+    function setImmersive(on){ lb.classList.toggle("immersive", on); if (fsB) fsB.setAttribute("aria-pressed", on ? "true" : "false"); }
+    function toggleFS(){
+      if (fsElement()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+      if (lb.classList.contains("immersive")) { setImmersive(false); return; }
+      if (canFS) {
+        var r;
+        try { r = (lb.requestFullscreen || lb.webkitRequestFullscreen).call(lb); } catch (err) { r = Promise.reject(err); }
+        if (r && r.catch) r.catch(function(){ setImmersive(true); });     // refused (an embedded browser): the immersive view
+        setTimeout(function(){ if (!fsElement()) setImmersive(true); }, 600); // or no answer at all: the same
+      } else setImmersive(true);
+    }
+    function syncFS(){ if (fsElement() === lb) setImmersive(true); else if (lb.classList.contains("immersive")) setImmersive(false); }
+    document.addEventListener("fullscreenchange", syncFS);
+    document.addEventListener("webkitfullscreenchange", syncFS);
+    if (fsB) fsB.addEventListener("click", toggleFS);
     function close(){
+      if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      setImmersive(false);
       lb.classList.remove("open"); lb.setAttribute("aria-hidden", "true");
       document.body.classList.remove("lb-lock");
       if (last) last.focus();
@@ -115,14 +137,19 @@
     prev.addEventListener("click", function(){ show(idx - 1); });
     next.addEventListener("click", function(){ show(idx + 1); });
     closeB.addEventListener("click", close);
-    lb.querySelector(".lb-stage").addEventListener("click", function(e){ if (e.target.classList.contains("lb-slide")) close(); });
+    lb.querySelector(".lb-stage").addEventListener("click", function(e){
+      if (!e.target.classList.contains("lb-slide")) return;
+      if (lb.classList.contains("immersive") && !fsElement()) setImmersive(false);   // a tap brings the controls back
+      else close();
+    });
     document.addEventListener("keydown", function(e){
       if (!lb.classList.contains("open")) return;
-      if (e.key === "Escape") close();
+      if (e.key === "f" || e.key === "F") toggleFS();
+      else if (e.key === "Escape") close();
       else if (e.key === "ArrowRight") show(idx + 1);
       else if (e.key === "ArrowLeft") show(idx - 1);
       else if (e.key === "Tab") {                                  // keep focus inside the carousel
-        var f = [closeB, prev, next].filter(function(b){ return !b.disabled && b.offsetParent; });
+        var f = [fsB, closeB, prev, next].filter(function(b){ return b && !b.disabled && b.offsetParent; });
         var at = f.indexOf(document.activeElement);
         e.preventDefault(); f[(at + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
       }
